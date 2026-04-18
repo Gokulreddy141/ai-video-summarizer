@@ -1,0 +1,35 @@
+services:
+  # 1. The Message Broker
+  redis:
+    image: redis:alpine
+    container_name: ai_redis_broker
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # 2. Service A (Node.js Gateway)
+  gateway:
+    build: 
+      context: ./gateway-service
+    container_name: gateway_service
+    ports:
+      - "3001:3001"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PORT=3001
+    depends_on:
+      - redis
+    volumes:
+      - ./gateway-service:/usr/src/app
+      - /usr/src/app/node_modules
+
+  # 3. Service B (Python AI Worker)
+  worker:
+    build:
+      context: ./ai-worker-service
+    container_name: ai_worker_service
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - GROQ_API_KEY=${GROQ_API_KEY} # <-- Add this line
+    depends_on:
+      - redis
